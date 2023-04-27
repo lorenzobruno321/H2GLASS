@@ -16,19 +16,18 @@ efficiency_bur = 0.75                                                           
 cap_installed = 1                  #### DA MODIFICARE                                   # [KWpeak]
 thermal_load = 42.2*52*1000        #### DA MODIFICARE                                   # [kW] waiting for the H2GLASS value [average kW/week]*[week/year]
 
-max_power_ele = 10_000_000                                                                  # [kW]
-max_power_bur = 10_000_000                                                                  # [kW]
-min_power_ele = 0                                                                           # [kW]
-min_power_bur = 0                                                                           # [kW]
+power_rated_ele = 10_000_000                                                                  # [kW]
+power_rated_bur = 10_000_000                                                                  # [kW]
+perc_max_ele = 0.8                                                                           # [-]
+perc_min_ele = 0                                                                           # [-]
 
 CAPEX_ele = 1000                                                                        # [USD/kWe/year]  https://www.iea.org/reports/electrolysers
 CAPEX_bur = CAPEX_ele*0.05
-#max_Power = max(power_time.values())                                                   # [kW] max value of power
 
 OPEX_ele = 13.6                                                                         # [USD/kWe/year]  https://www.iea.org/reports/electrolysers
 OPEX_bur = OPEX_ele*0.05                                                                # [USD/kWe/year]  https://it.scribd.com/document/514697464/COSTOS-DETALLADO-CAPEX-2019-PLANTA-CALLAO
 
-cost_energy = 0.2477              #### DA CONVERTIRE                                    # [€/kWh] https://electricityinspain.com/electricity-prices-in-spain/ in 2018
+cost_energy = 0.2477                                                                    # [€/kWh*h] https://electricityinspain.com/electricity-prices-in-spain/ in 2018
 
 
 
@@ -39,12 +38,15 @@ def get_l(xx):
     if xx == 'list_time':
         return list_time
 
+def get_pv():
+    return import_PV_supply
+
 def dict_Forecast(xx):
-    dict_Forecast = {t: xx.iloc[t, 1] for t in list_time}
+    dict_Forecast = {t: xx.iloc[4+t, 2] for t in list_time}
     return dict_Forecast
 
 def get_prop(xx):
-    if xx == 'lifee':
+    if xx == 'life':
         return life
     if xx == 'LHV':
         return LHV
@@ -56,22 +58,6 @@ def get_prop(xx):
 def get_flow_rate(xx):
     if xx == 'flow_rate':
         return flow_rate
-    else:
-        return
-
-def get_max(xx):
-    if xx == 'max_power_ele':
-        return max_power_ele
-    if xx == 'max_power_bur':
-        return max_power_bur
-    else:
-        return
-
-def get_min(xx):
-    if xx == 'min_power_ele':
-        return min_power_ele
-    if xx == 'min_power_bur':
-        return min_power_bur
     else:
         return
 
@@ -89,9 +75,21 @@ def get_cap_installed(xx):
     else:
         return
 
-def get_thermal_load(xx):
-    dict_load = {t: xx.iloc[t, 1] for t in list_time}
+def get_thermal_load(thermal_load):
+    dict_load = {t: thermal_load for t in list_time}
     return dict_load
+
+def get_contstraint_ele(xx):
+    if xx == 'power_rated_ele':
+        return power_rated_ele
+    if xx == 'power_rated_bur':
+        return power_rated_bur
+    if xx == 'perc_max_ele':
+        return perc_max_ele
+    if xx == 'perc_min_ele':
+        return perc_min_ele
+    else:
+        return
 
 def get_CAPEX(xx):
     if xx == 'CAPEX_ele':
