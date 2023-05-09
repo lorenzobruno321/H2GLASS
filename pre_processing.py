@@ -16,6 +16,7 @@ efficiency_ele = 0.80                                                           
 efficiency_bur = 0.75                                                                   # [-] https://thermalprocessing.com/high-efficiency-gas-burners-make-good-economic-sense/ @1300°C and eta=0.8
 loh_ht = 0.75                                                                           # [-] ##################################################################
 thermal_load = 42.2*52*1000        #### DA MODIFICARE                                   # [kW] waiting for the H2GLASS value [average kW/week]*[week/year]
+compression_work = 1000            #### DA MODIFICARE                                   # [kWh] DA MODIFICARE
 
 perc_max_ele = 0.8                                                                       # [-]
 perc_min_ele = 0                                                                         # [-]
@@ -32,6 +33,9 @@ OPEX_bur = OPEX_ele*0.05                                                        
 
 CAPEX_pv = 1000                                                                        # [USD/kWe/year]  https://www.iea.o
 OPEX_pv = OPEX_ele*0.05                                                                # [USD/kWe/year]  https://it.scribd.com/document/514697464/COSTOS-DETALLADO-CAPEX-2019-PLANTA-CALLAO
+
+CAPEX_cp = 1000                                                                        # [USD/kWe/year]
+OPEX_cp = OPEX_ele*0.05                                                                # [USD/kWe/year]
 
 CAPEX_ht = 1000                                                                        # [USD/kWe/year]  ##################################################################
 OPEX_ht = OPEX_ele*0.05                                                                # [USD/kWe/year]  ##################################################################
@@ -64,6 +68,8 @@ def get_prop(xx):
         return LHV
     if xx == 'h2_density':
         return h2_density
+    if xx == 'compression_work':
+        return compression_work
     else:
         return
 
@@ -118,6 +124,8 @@ def get_CAPEX(xx):
         return CAPEX_bur
     if xx == 'CAPEX_pv':
         return CAPEX_pv
+    if xx == 'CAPEX_cp':
+        return CAPEX_cp
     if xx == 'CAPEX_ht':
         return CAPEX_ht
     else:
@@ -130,6 +138,8 @@ def get_OPEX(xx):
         return OPEX_bur
     if xx == 'OPEX_pv':
         return OPEX_pv
+    if xx == 'OPEX_cp':
+        return OPEX_cp
     if xx == 'OPEX_ht':
         return OPEX_ht
     else:
