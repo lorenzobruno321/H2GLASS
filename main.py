@@ -16,8 +16,9 @@ time_vec = list(range(365*24))
 model.delta_t = pyo.Param(initialize=get_l('time_step'))
 model.life = pyo.Param(initialize=get_prop('life'))
 model.LHV = pyo.Param(initialize=get_prop('LHV'))
-model.compression_work = pyo.Param(initialize=get_prop('compression_work'))
 model.h2_density = pyo.Param(initialize=get_prop('h2_density'))
+model.compression_work = pyo.Param(initialize=get_prop('compression_work'))
+model.capacity_rated_bo = pyo.Param(initialize=get_prop('capacity_rated_bo'))
 model.flow_rate = pyo.Param(initialize=get_flow_rate('flow_rate'))
 
 model.efficiency_ele = pyo.Param(initialize=get_efficiency('efficiency_ele'))
@@ -41,8 +42,11 @@ model.CAPEX_pv = pyo.Param(initialize=get_CAPEX('CAPEX_pv'))
 model.OPEX_pv = pyo.Param(initialize=get_OPEX('OPEX_pv'))
 model.CAPEX_cp = pyo.Param(initialize=get_CAPEX('CAPEX_cp'))
 model.OPEX_cp = pyo.Param(initialize=get_OPEX('OPEX_cp'))
+model.CAPEX_bo = pyo.Param(initialize=get_CAPEX('CAPEX_bo'))
+model.OPEX_bo = pyo.Param(initialize=get_OPEX('OPEX_bo'))
 model.CAPEX_ht = pyo.Param(initialize=get_CAPEX('CAPEX_ht'))
 model.OPEX_ht = pyo.Param(initialize=get_OPEX('OPEX_ht'))
+
 
 ## Model VARIABLE
 model.power_pv = pyo.Var(model.t, within=pyo.NonNegativeReals)
@@ -61,6 +65,9 @@ model.power_out_ht = pyo.Var(model.t, within=pyo.NonNegativeReals)
 
 model.power_in_bur = pyo.Var(model.t, within=pyo.NonNegativeReals)
 model.power_out_bur = pyo.Var(model.t, within=pyo.NonNegativeReals)
+
+model.capacity_bo = pyo.Var(model.t, within=pyo.NonNegativeReals)
+model.power_out_bo = pyo.Var(model.t, within=pyo.NonNegativeReals)
 
 model.power_rated_ele = pyo.Var(within=pyo.NonNegativeReals)
 model.power_rated_bur = pyo.Var(within=pyo.NonNegativeReals)
@@ -128,9 +135,21 @@ def constraint_min_capacity_ht(xx, t):
     return xx.capacity_ht[t] >= xx.capacity_rated_ht*xx.perc_min_ht
 model.constr_min_capacity_ht = pyo.Constraint(model.t, rule=constraint_min_capacity_ht)
 
+# constraint at HYDROGEN BOTTLE TANK
+def constraint_equilibrium_bo(xx, t):
+    if t == 0:
+        return xx.capacity_bo[t] == xx.capacity_bo[time_vec[-1]] - xx.power_out_bo[t]*xx.delta_t
+    else:
+        return xx.capacity_bo[t] == xx.capacity_bo[t-1] - xx.power_out_bo[t]*xx.delta_t
+model.constr_equilibrium_bo = pyo.Constraint(model.t, rule=constraint_equilibrium_bo)
+
+def constraint_initial_bo(xx):
+        return xx.capacity_bo[0] == xx.capacity_rated_bo
+model.constr_initial_bo = pyo.Constraint(rule=constraint_initial_bo)
+
 # constraint at NODE 3
 def constraint_n3(xx, t):
-    return xx.power_out_ele_bur[t] + xx.power_out_ht[t] == xx.power_in_bur[t]
+    return xx.power_out_ele_bur[t] + xx.power_out_ht[t] + xx.power_out_bo[t] == xx.power_in_bur[t]
 model.constr_n3 = pyo.Constraint(model.t, rule=constraint_n3)
 
 # constraint at BURNER POWER
@@ -155,8 +174,8 @@ model.constr_power_load = pyo.Constraint(model.t, rule=constraint_load)
 
 ## Model OBJECTIVE FUNCTIONS
 def func_object(xx):
-    C_npc_CAPEX = xx.power_rated_ele*xx.CAPEX_ele + xx.power_rated_bur*xx.CAPEX_bur + xx.power_rated_cp*xx.CAPEX_cp + xx.capacity_rated_ht*xx.CAPEX_ht
-    C_npc_OPEX = xx.power_rated_ele*xx.OPEX_ele + xx.power_rated_bur*xx.OPEX_bur + xx.power_rated_cp*xx.OPEX_cp + xx.capacity_rated_ht*xx.OPEX_ht
+    C_npc_CAPEX = xx.power_rated_ele*xx.CAPEX_ele + xx.power_rated_bur*xx.CAPEX_bur + xx.power_rated_cp*xx.CAPEX_cp + xx.capacity_rated_bo*xx.CAPEX_bo + xx.capacity_rated_ht*xx.CAPEX_ht
+    C_npc_OPEX = xx.power_rated_ele*xx.OPEX_ele + xx.power_rated_bur*xx.OPEX_bur + xx.power_rated_cp*xx.OPEX_cp + xx.capacity_rated_bo*xx.OPEX_bo + xx.capacity_rated_ht*xx.OPEX_ht
 
     C_electricity_grid = sum(xx.power_grid[t]*xx.cost_energy_grid for t in list_time)
     C_electricity_pv = xx.cap_installed*xx.CAPEX_pv + xx.cap_installed*xx.OPEX_pv*xx.life
@@ -173,4 +192,4 @@ opt = pyo.SolverFactory('glpk')
 results = opt.solve(instance)
 results.write()
 
-post_processing(instance,time_vec)
+post_processing(instance, time_vec)

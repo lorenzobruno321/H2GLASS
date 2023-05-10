@@ -15,8 +15,9 @@ import_PV_supply = pandas.read_excel("pv_supply_barcelona_1kwp.xlsx", sheet_name
 efficiency_ele = 0.80                                                                   # [-] https://www.iea.org/reports/electrolysers and H2GLASS
 efficiency_bur = 0.75                                                                   # [-] https://thermalprocessing.com/high-efficiency-gas-burners-make-good-economic-sense/ @1300°C and eta=0.8
 loh_ht = 0.75                                                                           # [-] ##################################################################
-thermal_load = 42.2*52*1000        #### DA MODIFICARE                                   # [kW] waiting for the H2GLASS value [average kW/week]*[week/year]
+thermal_load = 42.2*1000/7/24                                                           # [kW] waiting for the H2GLASS value [average kW/week]*[week/year]
 compression_work = 1000            #### DA MODIFICARE                                   # [kWh] DA MODIFICARE
+capacity_rated_bo = 2.5                                                                       # [kWh] litri* m3/l * density * LHV https://www.mahytec.com/wp-content/uploads/2021/03/CL-DS10-Data-sheet-60bar-850L-EN.pdf
 
 perc_max_ele = 0.8                                                                       # [-]
 perc_min_ele = 0                                                                         # [-]
@@ -38,7 +39,10 @@ CAPEX_cp = 1000                                                                 
 OPEX_cp = OPEX_ele*0.05                                                                # [USD/kWe/year]
 
 CAPEX_ht = 1000                                                                        # [USD/kWe/year]  ##################################################################
-OPEX_ht = OPEX_ele*0.05                                                                # [USD/kWe/year]  ##################################################################
+OPEX_ht = OPEX_ele*0.05
+
+CAPEX_bo = 1000                                                                        # [USD/kWe/year]
+OPEX_bo = OPEX_ele*0.05                                                                # [USD/kWe/year]
 cost_energy_grid = 0.2477                                                                # [€/kWh*h] https://electricityinspain.com/electricity-prices-in-spain/ in 2018
 
 
@@ -70,6 +74,8 @@ def get_prop(xx):
         return h2_density
     if xx == 'compression_work':
         return compression_work
+    if xx == 'capacity_rated_bo':
+        return capacity_rated_bo
     else:
         return
 
@@ -128,6 +134,8 @@ def get_CAPEX(xx):
         return CAPEX_cp
     if xx == 'CAPEX_ht':
         return CAPEX_ht
+    if xx == 'CAPEX_bo':
+        return CAPEX_bo
     else:
         return
 
@@ -142,6 +150,8 @@ def get_OPEX(xx):
         return OPEX_cp
     if xx == 'OPEX_ht':
         return OPEX_ht
+    if xx == 'OPEX_bo':
+        return OPEX_bo
     else:
         return
 
