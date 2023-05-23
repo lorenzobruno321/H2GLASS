@@ -55,6 +55,7 @@ model.power_grid = pyo.Var(model.t, within=pyo.NonNegativeReals)
 model.power_in_ele = pyo.Var(model.t, within=pyo.NonNegativeReals)
 model.power_out_ele = pyo.Var(model.t, within=pyo.NonNegativeReals)
 model.power_out_ele_bur = pyo.Var(model.t, within=pyo.NonNegativeReals)
+model.delta_onoff = pyo.Var(model.t, within=pyo.Binary)
 
 model.power_in_cp = pyo.Var(model.t, within=pyo.NonNegativeReals)
 model.power_out_ele_cp = pyo.Var(model.t, within=pyo.NonNegativeReals)
@@ -174,8 +175,8 @@ model.constr_power_load = pyo.Constraint(model.t, rule=constraint_load)
 
 ## Model OBJECTIVE FUNCTIONS
 def func_object(xx):
-    C_npc_CAPEX = xx.power_rated_ele*xx.CAPEX_ele + xx.power_rated_bur*xx.CAPEX_bur + xx.power_rated_cp*xx.CAPEX_cp + xx.capacity_rated_bo*xx.CAPEX_bo + xx.capacity_rated_ht*xx.CAPEX_ht
-    C_npc_OPEX = xx.power_rated_ele*xx.OPEX_ele + xx.power_rated_bur*xx.OPEX_bur + xx.power_rated_cp*xx.OPEX_cp + xx.capacity_rated_bo*xx.OPEX_bo + xx.capacity_rated_ht*xx.OPEX_ht
+    C_npc_CAPEX = xx.power_rated_ele*xx.CAPEX_ele + xx.flow_rate*xx.CAPEX_bur + xx.power_rated_cp*xx.CAPEX_cp + xx.flow_rate*3600*xx.CAPEX_bo + xx.flow_rate*3600*xx.CAPEX_ht
+    C_npc_OPEX = xx.power_rated_ele*xx.OPEX_ele + xx.flow_rate*xx.OPEX_bur + xx.power_rated_cp*xx.OPEX_cp + xx.flow_rate*3600*xx.OPEX_bo + xx.flow_rate*3600*xx.OPEX_ht
 
     C_electricity_grid = sum(xx.power_grid[t]*xx.cost_energy_grid for t in list_time)
     C_electricity_pv = xx.cap_installed*xx.CAPEX_pv + xx.cap_installed*xx.OPEX_pv*xx.life
