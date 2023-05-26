@@ -5,12 +5,14 @@ from pre_processing import *
 import numpy as np
 
 model = pyo.AbstractModel()
+rep_stack = 2
 
 ## Model SETS
 model.t = pyo.Set(initialize=get_l('list_time'))
 
 ## Model PARAMETERS
 model.list_pv = pyo.Param(model.t, initialize=dict_Forecast(get_pv()))
+model.thermal_load = pyo.Param(model.t, initialize=dict_thermalload(get_thermalload()))
 
 time_vec = list(range(365*24))
 model.delta_t = pyo.Param(initialize=get_l('time_step'))
@@ -24,7 +26,6 @@ model.flow_rate = pyo.Param(initialize=get_flow_rate('flow_rate'))
 model.efficiency_ele = pyo.Param(initialize=get_efficiency('efficiency_ele'))
 model.efficiency_bur = pyo.Param(initialize=get_efficiency('efficiency_bur'))
 model.loh_ht = pyo.Param(initialize=get_efficiency('loh_ht'))
-model.thermal_load = pyo.Param(model.t, initialize=get_thermal_load(thermal_load))
 
 model.perc_max_ele = pyo.Param(initialize=get_contstraint_ele('perc_max_ele'))
 model.perc_min_ele = pyo.Param(initialize=get_contstraint_ele('perc_min_ele'))
@@ -34,8 +35,11 @@ model.perc_max_ht = pyo.Param(initialize=get_contstraint_ht('perc_max_ht'))
 model.perc_min_ht = pyo.Param(initialize=get_contstraint_ht('perc_min_ht'))
 
 model.CAPEX_ele = pyo.Param(initialize=get_CAPEX('CAPEX_ele'))
-model.CAPEX_bur = pyo.Param(initialize=get_CAPEX('CAPEX_bur'))
 model.OPEX_ele = pyo.Param(initialize=get_OPEX('OPEX_ele'))
+model.INSTALL_ele = pyo.Param(initialize=get_ADDITIONAL_ele('INSTALL_ele'))
+model.REPLACE_ele = pyo.Param(initialize=get_ADDITIONAL_ele('REPLACE_ele'))
+
+model.CAPEX_bur = pyo.Param(initialize=get_CAPEX('CAPEX_bur'))
 model.OPEX_bur = pyo.Param(initialize=get_OPEX('OPEX_bur'))
 model.cost_energy_grid = pyo.Param(initialize=get_cost_energy('cost_energy_grid'))
 model.CAPEX_pv = pyo.Param(initialize=get_CAPEX('CAPEX_pv'))
@@ -175,7 +179,7 @@ model.constr_power_load = pyo.Constraint(model.t, rule=constraint_load)
 
 ## Model OBJECTIVE FUNCTIONS
 def func_object(xx):
-    C_npc_CAPEX = xx.power_rated_ele*xx.CAPEX_ele + xx.flow_rate*xx.CAPEX_bur + xx.power_rated_cp*xx.CAPEX_cp + xx.flow_rate*3600*xx.CAPEX_bo + xx.flow_rate*3600*xx.CAPEX_ht
+    C_npc_CAPEX = xx.power_rated_ele*xx.CAPEX_ele + xx.power_rated_ele*xx.INSTALL_ele + xx.power_rated_ele*xx.REPLACE_ele*rep_stack + xx.flow_rate*xx.CAPEX_bur + xx.power_rated_cp*xx.CAPEX_cp + xx.flow_rate*3600*xx.CAPEX_bo + xx.flow_rate*3600*xx.CAPEX_ht
     C_npc_OPEX = xx.power_rated_ele*xx.OPEX_ele + xx.flow_rate*xx.OPEX_bur + xx.power_rated_cp*xx.OPEX_cp + xx.flow_rate*3600*xx.OPEX_bo + xx.flow_rate*3600*xx.OPEX_ht
 
     C_electricity_grid = sum(xx.power_grid[t]*xx.cost_energy_grid for t in list_time)
