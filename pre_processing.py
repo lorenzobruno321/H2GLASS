@@ -10,9 +10,11 @@ h2_density = 0.0899                                                             
 water_density = 1000                                                                    # [kg/m3]
 flow_rate_m3 = 420                                                                      # [Nm3/h] (500 said Eduardo) but 420 from https://www.h-tec.com/fileadmin/user_upload/produkte/produktseiten/HCS/spec-sheet/H-TEC-Datenblatt-HCS-EN-23-03.pdf
 flow_rate = flow_rate_m3 / 3600 * h2_density                                            # [kg/s]
+discount_rate = 0.05                                                                    # [over 1] https://ycharts.com/indicators/us_discount_rate_monthly
+ECI = 166                                                                               # [gCO2/kWh] https://www.statista.com/statistics/1290486/carbon-intensity-power-sector-spain/#:~:text=In%202021%2C%20Spain's%20power%20sector,%2FKWh)%20of%20electricity%20generated.
 
-import_PV_supply = pandas.read_excel("pv_supply_barcelona_1kwp.xlsx", sheet_name='pv_supply_barcelona_1kwp', header=None, index_col=None)
-import_thermal_load = pandas.read_table("thermalload_momo.txt")      #  , header=None, names=['%time[h]', 'load[kW]']
+import_PV_supply = pandas.read_excel("pv_supply_barcelona_1kwp.xlsx", sheet_name='pv_supply_barcelona_1kwp', header=None, index_col=None)               # PV power data file
+import_thermal_load = pandas.read_excel("thermalload_momo_new.xls", sheet_name='Sheet1', header=None, index_col=None)                                   # POWER LOAD file
 
 efficiency_ele = 0.75                                                                   # [-] H-TEC SYSTEMS PEM Electrolyzer: Hydrogen Cube System and H2GLASS
 efficiency_bur = 0.95                                                                   # [-] Marocco Gandiglio
@@ -24,7 +26,9 @@ capacity_volume_bo = 850                                                        
 capacity_rated_bo = capacity_volume_bo / 1000 * h2_density * LHV                        # [kWh] = [litri] * [m3/l] * [kg/m3] * [kWh/kg]
 
 perc_max_ele = 1                                                                        # [-] Marocco Gandiglio
-perc_min_ele = 0.1                                                                      # [-] Marocco Gandiglio
+perc_min_ele = 0.1
+power_max_ele_bi = 10_000_000                                                                        # [-] Marocco Gandiglio
+power_min_ele_bi = 0                                                                      # [-] Marocco Gandiglio
 perc_max_bur = 1                                                                        # [-] Marocco Gandiglio
 perc_min_bur = 0                                                                        # [-] Marocco Gandiglio
 perc_max_ht = 0.9                                                                       # [-] [MOMO]
@@ -49,19 +53,15 @@ OPEX_cp = OPEX_cp_USD / 0.92                                                    
 CAPEX_ht = 470                                                                          # [€/kgH2/year]  Marocco Gandiglio
 OPEX_ht = OPEX_ele*0.02                                                                 # [€/kgH2/year]  Marocco Gandiglio
 
-CAPEX_bo = 470                                                                          # [€/kgH2/year] [ask momo]
-OPEX_bo = OPEX_ele*0.02                                                                 # [€/kgH2/year] [ask momo]
+CAPEX_bo = 470/2                                                                        # [€/kgH2/year] like the storage: MOMO said to reduce it so it is dividd by two
+OPEX_bo = OPEX_ele*0.02                                                                 # [€/kgH2/year] like the storage:
 
 cost_energy_grid = 0.2966                                                               # [€/kWh*h] https://electricityinspain.com/electricity-prices-in-spain/
 
 
 "Pre-processing"
 list_pv = list(range(1, import_PV_supply.shape[1]))                                     # list of PV data and dimension
-list_thermalload_str = list(range(1, import_thermal_load.shape[1]))                         # list of PV data and dimension
-
-for ii in list_thermalload_str:
-    list_thermalload[ii] = float(list_thermalload_str[ii])
-
+list_thermalload_str = list(range(1, import_thermal_load.shape[1]))                     # list of thermal load values in time
 
 def get_l(xx):
     if xx == 'list_time':
@@ -96,6 +96,10 @@ def get_prop(xx):
         return compression_work
     if xx == 'capacity_rated_bo':
         return capacity_rated_bo
+    if xx == 'discount_rate':
+        return discount_rate
+    if xx == 'ECI':
+        return ECI
     else:
         return
 
@@ -120,6 +124,10 @@ def get_contstraint_ele(xx):
         return perc_max_ele
     if xx == 'perc_min_ele':
         return perc_min_ele
+    if xx == 'power_max_ele_bi':
+        return power_max_ele_bi
+    if xx == 'power_min_ele_bi':
+        return power_min_ele_bi
     else:
         return
 
@@ -187,15 +195,27 @@ def get_cost_energy(xx):
 
 """"
 something to write in the report
-1) the massflow rate is 500                                                         --> OK 
-2) efficiencies                                                                     --> DATASHEET
-3) thermal load                                                                     --> YES but made by me
+1) the massflow rate is 500                                                          --> OK 
+2) efficiencies                                                                      --> DATASHEET
+3) thermal load                                                                      --> YES but made by me
 4) 30 bar at electrolyser + 200 bar storage tank
-5) INSTALLATION COSTS?                                                              --> YES with substitution 
+5) INSTALLATION COSTS?                                                               --> YES with substitution 
 6) raga il burner cost è in €/kgH -----> I have multiplied it h2_density*3600
-7) assumo bottle cost equal to tank cost                                            --> MOMO PASSA IL DATASHEET
-8) 20 anni lifetime                                                                 --> OK
-9) devo aggiungere il costo dell'acqua                                              --> NO
+7) assuming bottle cost equal to tank cost                                           --> MOMO's DATASHEET
+8) 20 years lifetime                                                                 --> OK
+9) water cost addiction?                                                             --> MOMO SAYS NO
+
+# 31/05 MODIFICATIONS
+1) capex storage bottle tank                                                         --> divided by two
+2) PV modification                                                                   --> MOMO CONDITION
+3) binary function definition                                                        --> ADDITION of the linearized functions
+4) environmental factors                                                             --> LCOE, LCOH and CO2 mass
+
+# 12/06 MODIFICATIONS
+1) ask momo for the code of the load reading
+2) ask momo for the code of the binary function on/off of the electrolyzer
+3) environmental factors
+4) how to plot the costs?                                                             
 
 
 """
