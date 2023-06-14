@@ -14,7 +14,8 @@ discount_rate = 0.05                                                            
 ECI = 166                                                                               # [gCO2/kWh] https://www.statista.com/statistics/1290486/carbon-intensity-power-sector-spain/#:~:text=In%202021%2C%20Spain's%20power%20sector,%2FKWh)%20of%20electricity%20generated.
 
 import_PV_supply = pandas.read_excel("pv_supply_barcelona_1kwp.xlsx", sheet_name='pv_supply_barcelona_1kwp', header=None, index_col=None)               # PV power data file
-import_thermal_load = pandas.read_excel("thermalload_momo_new.xls", sheet_name='Sheet1', header=None, index_col=None)                                   # POWER LOAD file
+import_thermal_load = pandas.read_excel("thermalload_momo_new.xlsx", sheet_name='Sheet1', header=None, index_col=None)                                  # POWER LOAD file
+import_delta_func = pandas.read_excel("delta_func.xlsx", sheet_name='Sheet1', header=None, index_col=None)                                              # DELTA FUNCTION file
 
 efficiency_ele = 0.75                                                                   # [-] H-TEC SYSTEMS PEM Electrolyzer: Hydrogen Cube System and H2GLASS
 efficiency_bur = 0.95                                                                   # [-] Marocco Gandiglio
@@ -25,10 +26,12 @@ compression_work = specific_work_cp * 1000 / 3600 * flow_rate * 3600            
 capacity_volume_bo = 850                                                                # [liters] https://www.mahytec.com/wp-content/uploads/2021/03/CL-DS10-Data-sheet-60bar-850L-EN.pdf
 capacity_rated_bo = capacity_volume_bo / 1000 * h2_density * LHV                        # [kWh] = [litri] * [m3/l] * [kg/m3] * [kWh/kg]
 
+val_rampup_data = 60                                                                    # [MW/min]
+val_rampup = val_rampup_data*1000*60                                                    # [kW] = [MW/min] * [kW/MW] * [min/hour]
 perc_max_ele = 1                                                                        # [-] Marocco Gandiglio
-perc_min_ele = 0.1
-power_max_ele_bi = 10_000_000                                                                        # [-] Marocco Gandiglio
-power_min_ele_bi = 0                                                                      # [-] Marocco Gandiglio
+perc_min_ele = 0.1                                                                      # [-] Marocco Gandiglio
+power_max_ele_bi = 10_000_000                                                           # [-] Marocco Gandiglio
+power_min_ele_bi = 0                                                                    # [-] Marocco Gandiglio
 perc_max_bur = 1                                                                        # [-] Marocco Gandiglio
 perc_min_bur = 0                                                                        # [-] Marocco Gandiglio
 perc_max_ht = 0.9                                                                       # [-] [MOMO]
@@ -61,21 +64,25 @@ cost_energy_grid = 0.2966                                                       
 
 "Pre-processing"
 list_pv = list(range(1, import_PV_supply.shape[1]))                                     # list of PV data and dimension
-list_thermalload_str = list(range(1, import_thermal_load.shape[1]))                     # list of thermal load values in time
+list_thermalload_str = list(range(0, import_thermal_load.shape[0]))                     # list of thermal load values in time
+list_deltafunc_str = list(range(1, import_delta_func.shape[0]))                         # list of thermal load values in time
 
 def get_l(xx):
     if xx == 'list_time':
         return list_time
     if xx == 'time_step':
         return time_step
-    if xx == 'time_vec':
-        return list_time
+#    if xx == 'time_vec':
+#        return list_time
 
 def get_pv():
     return import_PV_supply
 
 def get_thermalload():
     return import_thermal_load
+
+def get_deltafunc():
+    return import_delta_func
 
 def dict_Forecast(xx):
     dict_Forecast = {t: xx.iloc[4+t, 2] for t in list_time}
@@ -84,6 +91,10 @@ def dict_Forecast(xx):
 def dict_thermalload(xx):
     dict_thermalload = {t: xx.iloc[0+t, 0] for t in list_time}
     return dict_thermalload
+
+def dict_deltafunc(xx):
+    dict_deltafunc = {t: xx.iloc[0+t, 0] for t in list_time}
+    return dict_deltafunc
 
 def get_prop(xx):
     if xx == 'life':
@@ -100,6 +111,8 @@ def get_prop(xx):
         return discount_rate
     if xx == 'ECI':
         return ECI
+    if xx == 'val_rampup':
+        return val_rampup
     else:
         return
 
@@ -213,9 +226,10 @@ something to write in the report
 
 # 12/06 MODIFICATIONS
 1) ask momo for the code of the load reading
-2) ask momo for the code of the binary function on/off of the electrolyzer
-3) environmental factors
-4) how to plot the costs?                                                             
+2) ask momo rampup condition
+3) ask momo for the code of the binary function on/off of the electrolyzer
+4) environmental factors
+5) how to plot the costs?                                                             
 
 
 """
