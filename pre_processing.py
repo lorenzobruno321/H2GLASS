@@ -1,7 +1,9 @@
 import pandas
+import numpy as np
+import h5py
+from scipy.io import loadmat
 
 "Import and introducing data"
-
 list_time = list(range(365*24))                                                         # [h]
 time_step = list_time[1] - list_time[0]                                                 # [h]
 life = 20                                                                               # [years] lifetime of the plant
@@ -14,8 +16,12 @@ discount_rate = 0.05                                                            
 ECI = 166                                                                               # [gCO2/kWh] https://www.statista.com/statistics/1290486/carbon-intensity-power-sector-spain/#:~:text=In%202021%2C%20Spain's%20power%20sector,%2FKWh)%20of%20electricity%20generated.
 
 import_PV_supply = pandas.read_excel("pv_supply_barcelona_1kwp.xlsx", sheet_name='pv_supply_barcelona_1kwp', header=None, index_col=None)               # PV power data file
-import_thermal_load = pandas.read_excel("thermalload_momo_new.xlsx", sheet_name='Sheet1', header=None, index_col=None)                                  # POWER LOAD file
+#import_thermal_load = pandas.read_excel("thermalload_momo_new.xlsx", sheet_name='Sheet1', header=None, index_col=None)                                  # POWER LOAD file
 import_delta_func = pandas.read_excel("delta_func.xlsx", sheet_name='Sheet1', header=None, index_col=None)                                              # DELTA FUNCTION file
+thermal_load_mat = loadmat('thermalload_momo_new.mat')                                  # POWER LOAD file
+f = h5py.File('thermalload_momo_new.mat', 'r')
+data_thermal = f.get('data/variable')
+data_thermal = np.array(data_thermal)
 
 efficiency_ele = 0.75                                                                   # [-] H-TEC SYSTEMS PEM Electrolyzer: Hydrogen Cube System and H2GLASS
 efficiency_bur = 0.95                                                                   # [-] Marocco Gandiglio
@@ -64,7 +70,7 @@ cost_energy_grid = 0.2966                                                       
 
 "Pre-processing"
 list_pv = list(range(1, import_PV_supply.shape[1]))                                     # list of PV data and dimension
-list_thermalload_str = list(range(0, import_thermal_load.shape[0]))                     # list of thermal load values in time
+#list_thermalload_str = list(range(0, import_thermal_load.shape[0]))                     # list of thermal load values in time
 list_deltafunc_str = list(range(1, import_delta_func.shape[0]))                         # list of thermal load values in time
 
 def get_l(xx):
@@ -79,7 +85,8 @@ def get_pv():
     return import_PV_supply
 
 def get_thermalload():
-    return import_thermal_load
+    return thermal_load_mat
+#    return import_thermal_load
 
 def get_deltafunc():
     return import_delta_func

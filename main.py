@@ -8,14 +8,19 @@ model = pyo.AbstractModel()
 rep_stack = 2
 
 ## Model SETS
+time_vec = list(range(365 * 24))
 model.t = pyo.Set(initialize=get_l('list_time'))
+model.t2 = pyo.Set(initialize=time_vec)
+dt = pyo.Set(initialize=range(0, 8759))
+
 
 ## Model PARAMETERS
 model.list_pv = pyo.Param(model.t, initialize=dict_Forecast(get_pv()))
-model.thermal_load_str = pyo.Param(model.t, initialize=dict_thermalload(get_thermalload()))
+#model.thermal_load_str = pyo.Param(model.t, initialize=dict_thermalload(get_thermalload()))
+model.thermal_load_str = pyo.Param(model.t, initialize=get_thermalload())
 model.deltafunc_str = pyo.Param(model.t, initialize=dict_deltafunc(get_deltafunc()))
 
-time_vec = list(range(365 * 24))
+
 time_life = list(range(life))
 model.delta_t = pyo.Param(initialize=get_l('time_step'))
 model.life = pyo.Param(initialize=get_prop('life'))
@@ -112,53 +117,32 @@ def constraint_out_ele(xx, t):
     return xx.power_out_ele[t] == xx.efficiency_ele * xx.power_in_ele[t]
 model.constr_out_ele = pyo.Constraint(model.t, rule=constraint_out_ele)
 
+#auxiliary equation with power_opt, z and delta
+model.optDelta_ele = pyo.Var(dt, domain=pyo.Reals, initialize=0)
+model.optzON_ele = pyo.Var(dt, domain=pyo.Reals, initialize=0)
+model.power_opt_ele = pyo.Var(dt, domain=pyo.Reals, initialize=0)
+M = 10000000
+
 # constraint at ELECTROLYSER POWER
 def constraint_inner_power_ele(xx, t):
-    return xx.model.power_opt_ele[t] == xx.model.power_in_ele[t] - xx.model.power_out_ele[t]
+    return xx.power_opt_ele[t] == xx.power_in_ele[t] - xx.power_out_ele[t]
 model.constr_inner_power_ele = pyo.Constraint(model.t, rule=constraint_inner_power_ele)
 
-#auxiliary equation with power_rated_ele_aux
-model.optDelta_ele = pyo.Var(model.t, domain = pyo.Reals, initialize=0)
-model.optzON_ele= pyo.Var(model.t, domain = pyo.Reals, initialize=0)
-model.power_opt_ele = pyo.Var(model.t, domain = pyo.Reals, initialize=0)
+def constraint_ineq_1(xx, t):
+    return -M*xx.optDelta_ele[t] <= xx.optzON_ele[t]
+model.constr_ineq_1 = pyo.Constraint(model.t, rule=constraint_ineq_1)
 
-# HOW IS M DEFINED??
-model.constraints.add(-M*model.optDelta_ele[t] <= model.optzON_ele[t])
-model.constraints.add(model.optzON_ele[t] <= M*model.optDelta_ele[t])
-model.constraints.add(-M*(1 - model.optzON_ele[t]) <= model.optzON_ele[t]- model.power_opt_ele[t])
-model.constraints.add(model.optzON_ele[t] - model.power_opt_ele[t] <= M*(1 - model.optzON_ele[t]))
+def constraint_ineq_2(xx, t):
+    return xx.optzON_ele[t] <= M*xx.optDelta_ele[t]
+model.constr_ineq_2 = pyo.Constraint(model.t, rule=constraint_ineq_2)
 
-"""
-def constraint_max_power_ele(xx, t):
-    return xx.power_in_ele[t] <= xx.power_rated_ele_aux[t] * xx.perc_max_ele
-model.constr_max_power_ele = pyo.Constraint(model.t, rule=constraint_max_power_ele)
+def constraint_ineq_3(xx, t):
+    return -M*(1 - xx.optDelta_ele[t]) <= xx.optzON_ele[t] - xx.power_opt_ele[t]
+model.constr_ineq_3 = pyo.Constraint(model.t, rule=constraint_ineq_3)
 
-def constraint_min_power_ele(xx, t):
-    return xx.power_in_ele[t] >= xx.power_rated_ele_aux[t] * xx.perc_min_ele
-model.constr_min_power_ele = pyo.Constraint(model.t, rule=constraint_min_power_ele)
-
-def constraint_power_ele_bi_1(xx, t):
-    return xx.power_rated_ele_aux[t] <= xx.power_rated_ele - (1-xx.deltafunc[t]) * xx.power_min_ele_bi                # _onoff
-model.constr_power_ele_bi_1 = pyo.Constraint(model.t, rule=constraint_power_ele_bi_1)
-
-def constraint_power_ele_bi_2(xx, t):
-    return xx.power_rated_ele_aux[t] >= xx.power_rated_ele - (1-xx.deltafunc[t]) * xx.power_max_ele_bi                  #   _onoff
-model.constr_power_ele_bi_2 = pyo.Constraint(model.t, rule=constraint_power_ele_bi_2)
-
-def constraint_power_ele_bi_3(xx, t):
-    return xx.power_rated_ele_aux[t] <= xx.power_max_ele_bi * xx.deltafunc[t]                                           #   _onoff
-model.constr_power_ele_bi_3 = pyo.Constraint(model.t, rule=constraint_power_ele_bi_3)
-
-def constraint_power_ele_bi_4(xx, t):
-    return xx.power_rated_ele_aux[t] <= xx.power_min_ele_bi * xx.deltafunc[t]                                           #   _onoff
-model.constr_power_ele_bi_4 = pyo.Constraint(model.t, rule=constraint_power_ele_bi_4)
-
-alfa_el_in = 0.5
-coeff_el_in = 0.4
-def constraint_power_ele_perfo_curve(xx, t):
-    return xx.power_out_ele[t] <= alfa_el_in*xx.power_in_ele[t] + coeff_el_in* xx.power_rated_ele_aux[t]
-model.constr_power_ele_perfo_curve = pyo.Constraint(model.t, rule=constraint_power_ele_perfo_curve)
-"""
+def constraint_ineq_4(xx, t):
+    return xx.optzON_ele[t] - xx.power_opt_ele[t] <= M*(1 - xx.optDelta_ele[t])
+model.constr_ineq_4 = pyo.Constraint(model.t, rule=constraint_ineq_4)
 
 # constraint at NODE 2
 def constraint_n2(xx, t):
@@ -247,8 +231,8 @@ model.constr_power_load = pyo.Constraint(model.t, rule=constraint_load)
 
 ## Model OBJECTIVE FUNCTIONS
 def func_object(xx):
-    C_npc_CAPEX = xx.power_rated_ele * xx.CAPEX_ele + xx.power_rated_ele * xx.INSTALL_ele + xx.power_rated_ele * xx.REPLACE_ele * rep_stack + xx.power_rated_cp * xx.CAPEX_bur + xx.power_rated_cp * xx.CAPEX_cp + xx.flow_rate * 3600 * xx.CAPEX_bo + xx.flow_rate * 3600 * xx.CAPEX_ht
-    C_npc_OPEX = xx.power_rated_ele * xx.OPEX_ele + xx.power_rated_bur * xx.OPEX_bur + xx.power_rated_cp * xx.OPEX_cp + xx.flow_rate * 3600 * xx.OPEX_bo + xx.flow_rate * 3600 * xx.OPEX_ht
+    C_npc_CAPEX = xx.power_average_ele * xx.CAPEX_ele + xx.power_average_ele * xx.INSTALL_ele + xx.power_average_ele * xx.REPLACE_ele * rep_stack + xx.power_rated_cp * xx.CAPEX_bur + xx.power_rated_cp * xx.CAPEX_cp + xx.flow_rate * 3600 * xx.CAPEX_bo + xx.flow_rate * 3600 * xx.CAPEX_ht
+    C_npc_OPEX = xx.power_average_ele * xx.OPEX_ele + xx.power_rated_bur * xx.OPEX_bur + xx.power_rated_cp * xx.OPEX_cp + xx.flow_rate * 3600 * xx.OPEX_bo + xx.flow_rate * 3600 * xx.OPEX_ht
 
     C_electricity_grid = sum(xx.power_grid[t] * xx.cost_energy_grid for t in list_time)
     C_electricity_pv = xx.cap_installed * xx.CAPEX_pv + xx.cap_installed * xx.OPEX_pv * xx.life
@@ -259,16 +243,22 @@ def func_object(xx):
 
 model.func_obj = pyo.Objective(rule=func_object, sense=pyo.minimize)
 
+"""
 # MASS FLOW RATE
 hydro_mass_flow = np.zeros(np.size(time_vec))
+LVH_vec = model.LHV*np.ones(np.size(time_vec))
 for i in time_vec:
-    hydro_mass_flow[i] = model.power_out_ele[i]/model.LHV                                                                            # [kg/h] = [kW]/[kWh/kg]
+    hydro_mass_flow[i] = model.power_out_ele[i]/LVH_vec                                                                            # [kg/h] = [kW]/[kWh/kg]
+"""
 
 # WEIGHTED AVERAGE
-# integral average
+# integral average POWER OPTIMIZATED electrolyser
 power_average_ele = 0
 for i in time_vec:
-    power_average_ele = power_average_ele + (model.power_rated_ele[i] * model.delta_t)/8760
+    power_average_ele = power_average_ele + (model.power_opt_ele[i] * model.delta_t)/8760
+
+
+
 
 # ENVIRONMENTAL FACTORS
 # integral average
